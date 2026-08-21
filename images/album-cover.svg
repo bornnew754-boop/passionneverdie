@@ -1,0 +1,41 @@
+<svg width="800" height="800" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Placeholder album artwork">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#241a2c"/>
+      <stop offset="55%" stop-color="#150f1b"/>
+      <stop offset="100%" stop-color="#0b0810"/>
+    </radialGradient>
+    <linearGradient id="disc" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a2130"/>
+      <stop offset="100%" stop-color="#0f0b13"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0c27a"/>
+      <stop offset="100%" stop-color="#c98a3a"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="800" fill="url(#bg)"/>
+  <!-- film perforation border -->
+  <g fill="#3a2f42">
+    <g id="perf-top">
+      <rect x="24" y="24" width="20" height="14" rx="3"/>
+    </g>
+  </g>
+  <!-- vinyl disc -->
+  <circle cx="400" cy="400" r="230" fill="url(#disc)" stroke="#3a2f42" stroke-width="2"/>
+  <circle cx="400" cy="400" r="196" fill="none" stroke="#2a2130" stroke-width="1.5"/>
+  <circle cx="400" cy="400" r="163" fill="none" stroke="#2a2130" stroke-width="1.5"/>
+  <circle cx="400" cy="400" r="130" fill="none" stroke="#2a2130" stroke-width="1.5"/>
+  <circle cx="400" cy="400" r="97" fill="url(#gold)"/>
+  <circle cx="400" cy="400" r="97" fill="none" stroke="#0b0810" stroke-width="2"/>
+  <circle cx="400" cy="400" r="12" fill="#0b0810"/>
+  <text x="400" y="404" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="20" fill="#1a1420" letter-spacing="3">PLACEHOLDER</text>
+  <!-- tonearm -->
+  <g transform="rotate(18 640 160)">
+    <circle cx="640" cy="160" r="18" fill="#c98a3a"/>
+    <rect x="632" y="160" width="10" height="230" rx="5" fill="#e6c893"/>
+    <rect x="620" y="382" width="34" height="16" rx="4" fill="#c98a3a"/>
+  </g>
+  <text x="400" y="700" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="30" fill="#c98a3a" letter-spacing="2">Replace with your album cover</text>
+  <text x="400" y="736" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#7a7286">images/album-cover.jpg or .png / .svg</text>
+</svg>

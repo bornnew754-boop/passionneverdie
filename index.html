@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cinema Reels — Album Player</title>
+<meta name="description" content="A cinematic music album player featuring songs from Indian and international films.">
+
+<!-- Tailwind CSS (CDN, no build step required — works on GitHub Pages) -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#0b0810',
+          surface: '#150f1b',
+          card: '#1c1522',
+          line: '#2c2333',
+          gold: '#e3a855',
+          goldDeep: '#c98a3a',
+          crimson: '#a6303f',
+          bone: '#f3ede6',
+          mute: '#9089a0',
+        },
+        fontFamily: {
+          display: ['Fraunces', 'serif'],
+          body: ['Manrope', 'sans-serif'],
+          mono: ['IBM Plex Mono', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+
+<style>
+  html, body { overflow-x: hidden; }
+  body {
+    background-color: #0b0810;
+    background-image:
+      radial-gradient(ellipse 900px 600px at 15% -10%, rgba(166,48,63,0.16), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(227,168,85,0.10), transparent 55%);
+  }
+
+  /* Filmstrip perforation divider */
+  .filmstrip {
+    height: 14px;
+    background-image: repeating-linear-gradient(90deg, #2c2333 0 8px, transparent 8px 20px);
+    background-position: center;
+    position: relative;
+  }
+  .filmstrip::before, .filmstrip::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: #0b0810;
+  }
+
+  /* Spinning vinyl */
+  .disc-spin { animation: spin 9s linear infinite; animation-play-state: paused; }
+  .disc-spin.playing { animation-play-state: running; }
+  @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+
+  .tonearm { transform-origin: 88% 12%; transition: transform 0.5s cubic-bezier(.4,0,.2,1); transform: rotate(-18deg); }
+  .tonearm.playing { transform: rotate(0deg); }
+
+  /* Equalizer bars */
+  .eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }
+  .eq span { width: 2.5px; background: #e3a855; border-radius: 1px; animation: eq 0.9s ease-in-out infinite; }
+  .eq span:nth-child(1) { animation-delay: -0.6s; height: 40%; }
+  .eq span:nth-child(2) { animation-delay: -0.3s; height: 100%; }
+  .eq span:nth-child(3) { animation-delay: -0.9s; height: 65%; }
+  @keyframes eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+
+  /* Range inputs */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 999px;
+    background: #2c2333;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: #e3a855;
+    cursor: pointer;
+    box-shadow: 0 0 0 3px rgba(227,168,85,0.18);
+    transition: box-shadow .15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { box-shadow: 0 0 0 5px rgba(227,168,85,0.22); }
+  input[type="range"]::-moz-range-thumb {
+    width: 13px; height: 13px; border: none; border-radius: 50%;
+    background: #e3a855; cursor: pointer;
+  }
+  #progress::-webkit-slider-runnable-track, #volume::-webkit-slider-runnable-track { border-radius: 999px; }
+
+  .song-row.active { background: linear-gradient(90deg, rgba(227,168,85,0.14), rgba(227,168,85,0.02)); }
+  .song-row.active .track-title { color: #e3a855; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2c2333; border-radius: 999px; }
+
+  :focus-visible { outline: 2px solid #e3a855; outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .disc-spin, .eq span { animation: none !important; }
+    .tonearm { transition: none !important; }
+  }
+
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: #2c2333 transparent; }
+</style>
+</head>
+
+<body class="min-h-screen font-body text-bone antialiased">
+
+<!-- ============ HEADER ============ -->
+<header class="sticky top-0 z-30 backdrop-blur-md bg-ink/80 border-b border-line">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
+    <div class="flex items-center gap-2 shrink-0">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="text-gold">
+        <circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width="1.4"/>
+        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+      </svg>
+      <span class="font-display font-semibold text-lg sm:text-xl tracking-tight">Cinema Reels</span>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="relative w-full max-w-[220px] sm:max-w-xs">
+      <label for="search" class="sr-only">Search songs</label>
+      <input
+        id="search"
+        type="text"
+        placeholder="Search songs or artists…"
+        autocomplete="off"
+        class="w-full bg-surface border border-line focus:border-gold/60 rounded-full pl-9 pr-8 py-2 text-sm placeholder:text-mute/70 transition-colors"
+        aria-label="Search songs or artists"
+      >
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-mute" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <button id="clearSearch" type="button" aria-label="Clear search" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-mute hover:text-bone transition-colors">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="filmstrip"></div>
+</header>
+
+<!-- ============ MAIN ============ -->
+<main class="max-w-6xl mx-auto px-4 sm:px-6 pt-6 sm:pt-10 pb-40">
+
+  <div class="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-8 lg:gap-10">
+
+    <!-- ALBUM PANEL -->
+    <section aria-label="Album information" class="flex flex-col items-center lg:items-start">
+      <div class="relative w-56 sm:w-64 lg:w-full max-w-[280px]">
+        <!-- tonearm -->
+        <svg class="tonearm absolute -top-2 -right-2 w-16 sm:w-20 z-10 drop-shadow" id="tonearm" viewBox="0 0 100 100" fill="none">
+          <circle cx="88" cy="12" r="9" fill="#c98a3a"/>
+          <rect x="83" y="12" width="6" height="62" rx="3" fill="#e6c893"/>
+          <rect x="74" y="70" width="24" height="10" rx="3" fill="#c98a3a"/>
+        </svg>
+        <div class="rounded-full overflow-hidden border-4 border-card shadow-2xl shadow-black/60">
+          <img
+            id="albumCover"
+            src="images/album-cover.svg"
+            alt="Album cover artwork"
+            class="disc-spin w-full aspect-square object-cover"
+            onerror="this.onerror=null;this.src='images/album-cover.svg';"
+          >
+        </div>
+      </div>
+
+      <div class="mt-6 text-center lg:text-left w-full">
+        <h1 id="albumName" class="font-display font-semibold text-2xl sm:text-[28px] leading-tight">My Music Collection</h1>
+        <p id="albumArtist" class="text-mute mt-1 text-sm sm:text-base">Various Artists</p>
+        <p class="text-xs text-mute/70 mt-2 italic">Album name &amp; artist are placeholders — edit the values inside <code class="text-gold/80 not-italic">js/player.js</code>.</p>
+        <p id="albumMeta" class="text-sm text-gold/90 mt-3 font-mono tracking-wide"></p>
+      </div>
+    </section>
+
+    <!-- SONG LIST -->
+    <section aria-label="Song list" class="min-w-0">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-display text-lg text-mute/90">Tracklist</h2>
+        <span id="resultCount" class="text-xs text-mute font-mono"></span>
+      </div>
+
+      <div id="songListWrap" class="rounded-2xl border border-line bg-surface/50 overflow-hidden">
+        <ul id="songList" role="listbox" aria-label="Songs" class="divide-y divide-line/70"></ul>
+        <p id="noResults" class="hidden text-center text-mute py-10 text-sm">No songs found</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- ============ STICKY PLAYER ============ -->
+<footer class="fixed bottom-0 inset-x-0 z-40 border-t border-line bg-ink/95 backdrop-blur-md">
+  <!-- progress bar (full width, sits on the seam of the player) -->
+  <div class="px-3 sm:px-6 pt-2 flex items-center gap-2">
+    <span id="currentTime" class="font-mono text-[11px] text-mute w-9 text-right shrink-0">0:00</span>
+    <input id="progress" type="range" min="0" max="100" value="0" step="0.1"
+      class="flex-1" aria-label="Seek">
+    <span id="duration" class="font-mono text-[11px] text-mute w-9 shrink-0">0:00</span>
+  </div>
+
+  <div class="px-3 sm:px-6 pb-3 pt-2 flex items-center gap-3 sm:gap-5">
+
+    <!-- now playing info -->
+    <div class="flex items-center gap-3 min-w-0 w-[38%] sm:w-64 shrink-0">
+      <img id="miniCover" src="images/album-cover.svg" alt="" class="w-11 h-11 rounded-lg object-cover border border-line shrink-0">
+      <div class="min-w-0">
+        <p id="nowTitle" class="text-sm font-semibold truncate">Select a song</p>
+        <p id="nowArtist" class="text-xs text-mute truncate">—</p>
+      </div>
+      <span id="miniEq" class="eq hidden shrink-0"><span></span><span></span><span></span></span>
+    </div>
+
+    <!-- transport controls -->
+    <div class="flex-1 flex items-center justify-center gap-1 sm:gap-2">
+      <button id="shuffleBtn" type="button" aria-label="Shuffle" aria-pressed="false" title="Shuffle"
+        class="p-2 rounded-full text-mute hover:text-bone hover:bg-card transition-colors hidden sm:inline-flex">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      </button>
+
+      <button id="prevBtn" type="button" aria-label="Previous song" class="p-2.5 rounded-full text-bone hover:bg-card transition-colors">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM20 6v12l-9-6z"/></svg>
+      </button>
+
+      <button id="playBtn" type="button" aria-label="Play" class="p-3.5 rounded-full bg-gold text-ink hover:bg-gold/90 active:scale-95 transition-all shadow-lg shadow-gold/20">
+        <svg id="playIcon" width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <svg id="pauseIcon" width="19" height="19" viewBox="0 0 24 24" fill="currentColor" class="hidden"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+      </button>
+
+      <button id="nextBtn" type="button" aria-label="Next song" class="p-2.5 rounded-full text-bone hover:bg-card transition-colors">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM4 6v12l9-6z"/></svg>
+      </button>
+
+      <button id="repeatBtn" type="button" aria-label="Repeat off" title="Repeat" class="p-2 rounded-full text-mute hover:text-bone hover:bg-card transition-colors hidden sm:inline-flex relative">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        <span id="repeatOneBadge" class="hidden absolute -top-0.5 -right-0.5 text-[8px] font-bold bg-gold text-ink rounded-full w-3.5 h-3.5 flex items-center justify-center">1</span>
+      </button>
+    </div>
+
+    <!-- volume -->
+    <div class="hidden sm:flex items-center gap-2 w-40 shrink-0 justify-end">
+      <button id="muteBtn" type="button" aria-label="Mute" class="p-1.5 text-mute hover:text-bone transition-colors shrink-0">
+        <svg id="volIcon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4h4l5 5V5L7 10H3z"/><path d="M16.5 12a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"/></svg>
+        <svg id="muteIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden"><path d="M3 10v4h4l5 5V5L7 10H3z" fill="currentColor" stroke="none"/><line x1="17" y1="9" x2="23" y2="15"/><line x1="23" y1="9" x2="17" y2="15"/></svg>
+      </button>
+      <input id="volume" type="range" min="0" max="100" value="80" class="w-24" aria-label="Volume">
+    </div>
+
+    <!-- mobile shuffle/repeat -->
+    <div class="flex sm:hidden items-center gap-1 shrink-0">
+      <button id="shuffleBtnMobile" type="button" aria-label="Shuffle" aria-pressed="false" class="p-2 rounded-full text-mute">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      </button>
+      <button id="repeatBtnMobile" type="button" aria-label="Repeat off" class="p-2 rounded-full text-mute relative">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- error toast -->
+  <div id="errorToast" role="alert" class="hidden absolute -top-14 left-1/2 -translate-x-1/2 bg-crimson text-bone text-xs sm:text-sm px-4 py-2.5 rounded-lg shadow-xl max-w-[90vw] text-center"></div>
+</footer>
+
+<audio id="audio" preload="metadata"></audio>
+
+<script src="js/player.js"></script>
+</body>
+</html>
