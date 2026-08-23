@@ -114,7 +114,55 @@ const songs = [
     title: "Bande Hain Hum",
     artist: "A.R. Rahman",
     file: "songs/17-Bande-Hain-Hum.mp3"
-  }
+  },
+   {
+    id: 18,
+    title: "ram",
+    artist: "A.R. Rahman",
+    file: "songs/18-ram.mp3"
+  },
+     {
+    id: 19,
+    title: "Khaleja",
+    artist: "A.R. Rahman",
+    file: "songs/19-khaleja.mp3"
+  },
+  {
+    id: 20,
+    title: "premalu",
+    artist: "m.m.keervani",
+    file: "songs/20-Premalue.mp3"
+  },
+   {
+    id: 21,
+    title: "are are are",
+    artist: "A.R. Rahman",
+    file: "songs/21-Are.mp3"
+  },
+    {
+    id: 22,
+    title: "Mamta se bhari",
+    artist: "A.R. Rahman",
+    file: "songs/22-Mamta-Se-Bhari.mp3"
+  },
+     {
+    id: 23,
+    title: "Son of satyamarty",
+    artist: "A.R. Rahman",
+    file: "songs/23-Son-Of-Satyamurthy.mp3"
+  },
+   {
+    id: 24,
+    title: "yevadu",
+    artist: "A.R. Rahman",
+    file: "songs/24-Yevadu.mp3"
+  },
+     {
+    id: 25,
+    title: "Ram chant",
+    artist: "A.R. Rahman",
+    file: "songs/25-Rama-chant.mp3"
+  },
 ];
 
 /* ---------- 2. STATE ---------------------------------------- */
