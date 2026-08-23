@@ -131,7 +131,7 @@ const songs = [
     id: 20,
     title: "premalu",
     artist: "m.m.keervani",
-    file: "songs/20-Premalue.mp3"
+    file: "songs/20-Premalu.mp3"
   },
    {
     id: 21,
