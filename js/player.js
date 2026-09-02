@@ -163,6 +163,24 @@ const songs = [
     artist: "A.R. Rahman",
     file: "songs/25-Rama-chant.mp3"
   },
+   {
+    id: 26,
+    title: "Tulsishyam",
+    artist: "A.R. Rahman",
+    file: "songs/26-Tulsishyam.mp3"
+  },
+    {
+    id: 27,
+    title: "Dhanya",
+    artist: "A.R. Rahman",
+    file: "songs/27-Dhanya.mp3"
+  },
+    {
+    id: 28,
+    title: "Bhajan-vina",
+    artist: "A.R. Rahman",
+    file: "songs/28-Bhajan-vina.mp3"
+  }
 ];
 
 /* ---------- 2. STATE ---------------------------------------- */
