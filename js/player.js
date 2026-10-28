@@ -180,6 +180,48 @@ const songs = [
     title: "Bhajan-vina",
     artist: "A.R. Rahman",
     file: "songs/28-Bhajan-vina.mp3"
+  },
+    {
+    id: 29,
+    title: "Bajrang baan",
+    artist: "A.R. Rahman",
+    file: "songs/29-Bajrang.mp3"
+  },
+    {
+    id: 30,
+    title: "Ap-ka-kya keha mujko",
+    artist: "A.R. Rahman",
+    file: "songs/30-Ap-ka.mp3"
+  },
+    {
+    id: 31,
+    title: "Sammi-Meri",
+    artist: "A.R. Rahman",
+    file: "songs/31-Sammi-Meri.mp3"
+  },
+    {
+    id: 32,
+    title: "Chalre-Chalre baal",
+    artist: "A.R. Rahman",
+    file: "songs/32-Chalre-Chalre.mp3"
+  },
+    {
+    id: 33,
+    title: "33-Kiliye-Kiliye",
+    artist: "A.R. Rahman",
+    file: "songs/33-Kiliye-Kiliye.mp3"
+  },
+    {
+    id: 34,
+    title: "34-Hayyoda",
+    artist: "A.R. Rahman",
+    file: "songs/34-Hayyoda.mp3"
+  },
+   {
+    id: 35,
+    title: "Hanuman chalisa",
+    artist: "A.R. Rahman",
+    file: "songs/35-Hanuman-Chalisa.mp3"
   }
 ];
 
