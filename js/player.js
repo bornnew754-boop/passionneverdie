@@ -222,6 +222,12 @@ const songs = [
     title: "Hanuman chalisa",
     artist: "A.R. Rahman",
     file: "songs/35-Hanuman-Chalisa.mp3"
+  },
+    {
+    id: 36,
+    title: "Dragon Ball Super Ultra",
+    artist: "A.R. Rahman",
+    file: "songs/36-Dragon-Ball-Super-Ultra.mp3"
   }
 ];
 
