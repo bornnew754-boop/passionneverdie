@@ -228,6 +228,24 @@ const songs = [
     title: "Dragon Ball Super Ultra",
     artist: "A.R. Rahman",
     file: "songs/36-Dragon-Ball-Super-Ultra.mp3"
+  },
+   {
+    id: 37,
+    title: "Pesamale",
+    artist: "A.R. Rahman",
+    file: "songs/37-Pesamale.mp3"
+  },
+   {
+    id: 38,
+    title: "Khaled",
+    artist: "A.R. Rahman",
+    file: "songs/38-Khaled.mp3"
+  },
+   {
+    id: 39,
+    title: "Magic",
+    artist: "A.R. Rahman",
+    file: "songs/39-Magic.mp3"
   }
 ];
 
