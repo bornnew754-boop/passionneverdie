@@ -12,7 +12,6 @@
 
 const ALBUM_NAME        = 'My Music Collection';
 const ALBUM_ARTIST      = 'Various Artists';
-const ALBUM_DESCRIPTION = 'Cinema Reels — a hand-picked collection.';
 const ALBUM_COVER       = 'images/album-cover.svg';
 const SONGS_FOLDER      = 'songs/';
 
@@ -68,6 +67,8 @@ const state = {
   shuffle: false,
   repeat: 'off',        // 'off' | 'all' | 'one'
   lastVolume: 0.8,
+  webOffset: 0,         // for pagination
+  hasMoreWeb: false,
 };
 
 let searchTimer = null;
@@ -98,26 +99,51 @@ function showError(msg) {
 
 const AUDIUS_API = 'https://api.audius.co/v1';
 const APP_NAME   = 'CinemaReels';
+const PAGE_SIZE  = 20;
 
-async function searchWeb(q) {
+async function searchWeb(q, append = false) {
   const token = ++searchToken;
-  state.webLoading = true;
-  state.webError = '';
-  render();
+  if (!append) {
+    state.webLoading = true;
+    state.webError = '';
+    state.webOffset = 0;
+    state.hasMoreWeb = false;
+    render();
+  }
 
   try {
-    const url = `${AUDIUS_API}/tracks/search?query=${encodeURIComponent(q)}&app_name=${APP_NAME}`;
+    const offset = append ? state.webOffset : 0;
+    const url = `${AUDIUS_API}/tracks/search?query=${encodeURIComponent(q)}&app_name=${APP_NAME}&limit=${PAGE_SIZE}&offset=${offset}`;
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error('http ' + res.status);
     const json = await res.json();
-    const results = (json.data || []).filter(t => t.is_streamable !== false);
+    let results = (json.data || []).filter(t => t.is_streamable !== false);
+
+    // Sort by popularity (play_count desc, then favorite_count desc)
+    results.sort((a, b) => {
+      const plays = (b.play_count || 0) - (a.play_count || 0);
+      if (plays !== 0) return plays;
+      return (b.favorite_count || 0) - (a.favorite_count || 0);
+    });
+
     if (token !== searchToken) return;
-    state.webTracks = results.map(mapAudius);
+
+    const mapped = results.map(mapAudius);
+    if (append) {
+      state.webTracks = [...state.webTracks, ...mapped];
+    } else {
+      state.webTracks = mapped;
+    }
+    state.webOffset = offset + mapped.length;
+    state.hasMoreWeb = mapped.length === PAGE_SIZE;
+
     if (!state.webTracks.length) state.webError = 'No web results';
   } catch (err) {
     if (token !== searchToken) return;
-    state.webTracks = [];
-    state.webError = 'Web search unavailable';
+    if (!append) {
+      state.webTracks = [];
+      state.webError = 'Web search unavailable';
+    }
     console.error('Audius search failed:', err);
   } finally {
     if (token === searchToken) {
@@ -140,7 +166,37 @@ function mapAudius(track) {
   };
 }
 
-/* ---------- 6. RENDER ------------------------------------- */
+/* ---------- 6. TRENDING TRACKS (for empty search) ---------- */
+
+async function loadTrending() {
+  const token = ++searchToken;
+  state.webLoading = true;
+  state.webError = '';
+  render();
+
+  try {
+    const url = `${AUDIUS_API}/tracks/trending?app_name=${APP_NAME}&limit=${PAGE_SIZE}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('http ' + res.status);
+    const json = await res.json();
+    const results = (json.data || []).filter(t => t.is_streamable !== false);
+    if (token !== searchToken) return;
+    state.webTracks = results.map(mapAudius);
+    state.hasMoreWeb = false;
+  } catch (err) {
+    if (token !== searchToken) return;
+    state.webTracks = [];
+    state.webError = 'Could not load trending';
+    console.error('Audius trending failed:', err);
+  } finally {
+    if (token === searchToken) {
+      state.webLoading = false;
+      render();
+    }
+  }
+}
+
+/* ---------- 7. RENDER ------------------------------------- */
 
 function filteredLocal() {
   const q = state.query.trim().toLowerCase();
@@ -186,10 +242,21 @@ function render() {
     const sep = document.createElement('li');
     sep.className = 'px-4 py-2 text-[10px] uppercase tracking-[0.18em] font-mono bg-ink/60 text-mute';
     sep.textContent = state.webLoading
-      ? 'Searching Audius…'
+      ? 'Searching…'
       : state.webError || 'From Audius · full tracks';
     els.songList.appendChild(sep);
     state.webTracks.forEach((t, i) => els.songList.appendChild(rowEl(t, i + 1)));
+
+    // "Load more" button for web results
+    if (state.hasMoreWeb && !state.webLoading) {
+      const moreLi = document.createElement('li');
+      moreLi.className = 'px-4 py-3 text-center';
+      moreLi.innerHTML = `<button type="button" class="text-xs text-gold hover:underline font-mono">Load more results</button>`;
+      moreLi.querySelector('button').addEventListener('click', () => {
+        searchWeb(state.query.trim(), true);
+      });
+      els.songList.appendChild(moreLi);
+    }
   }
 
   els.noResults.classList.toggle('hidden', items.length > 0 || state.webLoading);
@@ -215,7 +282,7 @@ function updateActiveUI() {
   els.tonearm.classList.toggle('playing', playing);
 }
 
-/* ---------- 7. PLAYBACK ----------------------------------- */
+/* ---------- 8. PLAYBACK ----------------------------------- */
 
 function selectTrack(track, autoplay = true) {
   state.current = track;
@@ -279,7 +346,7 @@ function togglePlay() {
   else audio.pause();
 }
 
-/* ---------- 8. TRANSPORT EVENTS --------------------------- */
+/* ---------- 9. TRANSPORT EVENTS --------------------------- */
 
 els.playBtn.addEventListener('click', togglePlay);
 els.prevBtn.addEventListener('click', () => {
@@ -316,7 +383,7 @@ function cycleRepeat() {
 els.repeatBtn.addEventListener('click', cycleRepeat);
 els.repeatBtnMobile.addEventListener('click', cycleRepeat);
 
-/* ---------- 9. AUDIO EVENTS ------------------------------- */
+/* ---------- 10. AUDIO EVENTS ------------------------------ */
 
 audio.addEventListener('play', updateActiveUI);
 audio.addEventListener('pause', updateActiveUI);
@@ -351,7 +418,7 @@ audio.addEventListener('error', () => {
   }
 });
 
-/* ---------- 10. PROGRESS + VOLUME ------------------------- */
+/* ---------- 11. PROGRESS + VOLUME ------------------------- */
 
 function paintProgress() {
   const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
@@ -392,7 +459,7 @@ els.muteBtn.addEventListener('click', () => {
   }
 });
 
-/* ---------- 11. SEARCH WIRING ----------------------------- */
+/* ---------- 12. SEARCH WIRING ----------------------------- */
 
 els.search.addEventListener('input', () => {
   state.query = els.search.value;
@@ -401,11 +468,19 @@ els.search.addEventListener('input', () => {
   // drop stale web results immediately
   state.webTracks = [];
   state.webError = '';
+  state.hasMoreWeb = false;
 
   render();
 
   clearTimeout(searchTimer);
   const q = state.query.trim();
+
+  if (q.length === 0) {
+    // load trending when search is empty
+    loadTrending();
+    return;
+  }
+
   if (q.length < 2) { state.webLoading = false; render(); return; }
 
   searchTimer = setTimeout(() => searchWeb(q), 380);
@@ -439,7 +514,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === '/') { e.preventDefault(); els.search.focus(); }
 });
 
-/* ---------- 12. MEDIA SESSION (lock screen / OS controls) -- */
+/* ---------- 13. MEDIA SESSION ------------------------------ */
 
 function updateMediaSession(track) {
   if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
@@ -463,7 +538,7 @@ if ('mediaSession' in navigator) {
   safe('nexttrack', () => step(1));
 }
 
-/* ---------- 13. BOOT -------------------------------------- */
+/* ---------- 14. BOOT -------------------------------------- */
 
 (function init() {
   els.albumName.textContent = ALBUM_NAME;
@@ -474,5 +549,11 @@ if ('mediaSession' in navigator) {
   applyVolume(state.lastVolume);
   setShuffle(false);
   cycleRepeat();   // normalise to 'off'
-  render();
+
+  // If there are no local songs, load trending tracks immediately
+  if (localTracks.length === 0) {
+    loadTrending();
+  } else {
+    render();
+  }
 })();
