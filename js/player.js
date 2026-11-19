@@ -4,8 +4,8 @@
 
    Two libraries in one player:
    1) LOCAL  — files you keep in /songs  (see LOCAL_SONGS below)
-   2) WEB    — live search via the iTunes Search API (FREE,
-               no key, no signup) → 30-second preview streams.
+   2) WEB    — live search via the Audius API (FREE, no key,
+               CORS-enabled, streams full tracks).
    ============================================================ */
 
 /* ---------- 1. SONG DATA ---------------------------------- */
@@ -19,9 +19,8 @@ const SONGS_FOLDER      = 'songs/';
 /* Only the songs you actually committed to the repo go here.
    Everything else is found by the search box. */
 const LOCAL_SONGS = [
-  { title: 'Song One', artist: 'Artist A', file: 'song-one.mp3' },
-  { title: 'Song Two', artist: 'Artist B', file: 'song-two.mp3' },
-  // { title: '...', artist: '...', file: '...' }
+  // { title: 'Song One', artist: 'Artist A', file: 'song-one.mp3' },
+  // { title: 'Song Two', artist: 'Artist B', file: 'song-two.mp3' },
 ];
 
 const localTracks = LOCAL_SONGS.map((s, i) => ({
@@ -95,65 +94,10 @@ function showError(msg) {
   showError._t = setTimeout(() => els.errorToast.classList.add('hidden'), 4500);
 }
 
-/* ---------- 5. WEB SEARCH (iTunes — free, no API key) ------ */
+/* ---------- 5. WEB SEARCH (Audius — free, no key, CORS-enabled) ---------- */
 
-const ITUNES_ENDPOINT = 'https://itunes.apple.com/search';
-
-function itunesURL(term, limit, cb) {
-  const p = new URLSearchParams({
-    term,
-    media: 'music',
-    entity: 'song',
-    limit: String(limit),
-  });
-  if (cb) p.set('callback', cb);
-  return `${ITUNES_ENDPOINT}?${p.toString()}`;
-}
-
-/* JSONP fallback — iTunes does not always send CORS headers,
-   and JSONP is the officially supported workaround. */
-function itunesJSONP(term, limit) {
-  return new Promise((resolve, reject) => {
-    const cb = 'itunes_cb_' + Date.now() + Math.floor(Math.random() * 1e4);
-    const script = document.createElement('script');
-    const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 9000);
-
-    function cleanup() {
-      clearTimeout(timer);
-      try { delete window[cb]; } catch (_) { window[cb] = undefined; }
-      script.remove();
-    }
-
-    window[cb] = (data) => { cleanup(); resolve((data && data.results) || []); };
-    script.onerror = () => { cleanup(); reject(new Error('network')); };
-    script.src = itunesURL(term, limit, cb);
-    document.head.appendChild(script);
-  });
-}
-
-async function itunesSearch(term, limit = 25) {
-  try {
-    const res = await fetch(itunesURL(term, limit), { cache: 'no-store' });
-    if (!res.ok) throw new Error('http ' + res.status);
-    const data = await res.json();
-    return data.results || [];
-  } catch (_) {
-    return itunesJSONP(term, limit);
-  }
-}
-
-function mapItunes(r) {
-  return {
-    id: 'web-' + r.trackId,
-    title: r.trackName || 'Unknown track',
-    artist: r.artistName || 'Unknown artist',
-    album: r.collectionName || '',
-    cover: (r.artworkUrl100 || '').replace('100x100', '300x300') || ALBUM_COVER,
-    src: r.previewUrl,
-    source: 'web',
-    durationLabel: '0:30',
-  };
-}
+const AUDIUS_API = 'https://api.audius.co/v1';
+const APP_NAME   = 'CinemaReels';
 
 async function searchWeb(q) {
   const token = ++searchToken;
@@ -162,20 +106,38 @@ async function searchWeb(q) {
   render();
 
   try {
-    const results = await itunesSearch(q, 25);
+    const url = `${AUDIUS_API}/tracks/search?query=${encodeURIComponent(q)}&app_name=${APP_NAME}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error('http ' + res.status);
+    const json = await res.json();
+    const results = (json.data || []).filter(t => t.is_streamable !== false);
     if (token !== searchToken) return;
-    state.webTracks = results.filter((r) => r.previewUrl).map(mapItunes);
+    state.webTracks = results.map(mapAudius);
     if (!state.webTracks.length) state.webError = 'No web results';
-  } catch (_) {
+  } catch (err) {
     if (token !== searchToken) return;
     state.webTracks = [];
     state.webError = 'Web search unavailable';
+    console.error('Audius search failed:', err);
   } finally {
     if (token === searchToken) {
       state.webLoading = false;
       render();
     }
   }
+}
+
+function mapAudius(track) {
+  return {
+    id: 'web-' + track.id,
+    title: track.title || 'Unknown track',
+    artist: track.user?.name || track.user?.handle || 'Unknown artist',
+    album: '',
+    cover: track.artwork?.['480x480'] || track.artwork?.['150x150'] || ALBUM_COVER,
+    src: `${AUDIUS_API}/tracks/${track.id}/stream?app_name=${APP_NAME}`,
+    source: 'web',
+    durationLabel: track.duration ? fmtTime(track.duration) : '',
+  };
 }
 
 /* ---------- 6. RENDER ------------------------------------- */
@@ -224,8 +186,8 @@ function render() {
     const sep = document.createElement('li');
     sep.className = 'px-4 py-2 text-[10px] uppercase tracking-[0.18em] font-mono bg-ink/60 text-mute';
     sep.textContent = state.webLoading
-      ? 'Searching the web…'
-      : state.webError || 'From the web · 30-second previews';
+      ? 'Searching Audius…'
+      : state.webError || 'From Audius · full tracks';
     els.songList.appendChild(sep);
     state.webTracks.forEach((t, i) => els.songList.appendChild(rowEl(t, i + 1)));
   }
@@ -321,7 +283,6 @@ function togglePlay() {
 
 els.playBtn.addEventListener('click', togglePlay);
 els.prevBtn.addEventListener('click', () => {
-  // restart the song if we're more than 3s in
   if (audio.currentTime > 3) { audio.currentTime = 0; return; }
   step(-1);
 });
@@ -386,7 +347,7 @@ audio.addEventListener('error', () => {
   if (state.current.source === 'local') {
     showError(`Can't play "${state.current.title}" — check that ${state.current.src} exists.`);
   } else {
-    showError('This preview could not be loaded.');
+    showError('This track could not be loaded.');
   }
 });
 
@@ -437,7 +398,7 @@ els.search.addEventListener('input', () => {
   state.query = els.search.value;
   els.clearSearch.classList.toggle('hidden', state.query.length === 0);
 
-  // drop stale web results immediately so nothing wrong is listed
+  // drop stale web results immediately
   state.webTracks = [];
   state.webError = '';
 
@@ -487,7 +448,7 @@ function updateMediaSession(track) {
       title: track.title,
       artist: track.artist,
       album: track.album || ALBUM_NAME,
-      artwork: [{ src: track.cover || ALBUM_COVER, sizes: '300x300' }],
+      artwork: [{ src: track.cover || ALBUM_COVER, sizes: '480x480' }],
     });
   } catch (_) { /* ignore */ }
 }
